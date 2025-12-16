@@ -58,24 +58,16 @@ let clouds = [
   { x: 700, y: 25 }
 ];
 
-// ⭐ STARS
-let stars = Array.from({ length: 40 }, () => ({
-  x: Math.random() * 800,
-  y: Math.random() * 80,
-  r: Math.random() * 1.5 + 0.5,
-  a: Math.random()
-}));
-
 let score = 0;
 let highScore = localStorage.getItem("hs") || 0;
 
 let frame = 0;
 let gameOver = false;
 
-// 🌞🌙 DAY / NIGHT
+// 🌞🌙 DAY / NIGHT STATE
 let night = false;
 let cycleTimer = 0;
-const CYCLE_DURATION = 900; // ~15s
+const CYCLE_DURATION = 900; // ~15 seconds at 60fps
 
 // ---------- INPUT ----------
 function jump() {
@@ -106,10 +98,15 @@ canvas.addEventListener("touchstart", e => {
 
 // ---------- OBSTACLES ----------
 function spawnObstacle() {
+  const r = Math.random();
   let o = { x: 800 };
-  o.y = Math.random() < 0.5 ? 140 : 120;
-  o.w = 20;
-  o.h = o.y === 140 ? 20 : 35;
+
+  if (r < 0.5) {
+    o.y = 140; o.w = 15; o.h = 20; o.type = "cactus";
+  } else {
+    o.y = 120; o.w = 22; o.h = 35; o.type = "cactus";
+  }
+
   obstacles.push(o);
 }
 
@@ -121,7 +118,7 @@ function update() {
   score += 0.05;
   speed += 0.0005;
 
-  // Day / Night timer
+  // 🌞🌙 FIXED DAY/NIGHT TIMER
   cycleTimer++;
   if (cycleTimer > CYCLE_DURATION) {
     night = !night;
@@ -164,47 +161,16 @@ function update() {
     c.x -= speed * 0.2;
     if (c.x < -60) c.x = 860;
   });
-
-  // Stars twinkle
-  stars.forEach(s => {
-    s.a += (Math.random() - 0.5) * 0.05;
-    s.a = Math.max(0.2, Math.min(1, s.a));
-  });
 }
 
 // ---------- DRAW ----------
 function draw() {
   // Sky
-  ctx.fillStyle = night ? "#0b1020" : "#e8f4ff";
+  ctx.fillStyle = night ? "#1c1c2b" : "#e8f4ff";
   ctx.fillRect(0, 0, 800, 200);
 
-  // ⭐ Stars + 🌙 Moon (night only)
-  if (night) {
-    // Stars
-    stars.forEach(s => {
-      ctx.globalAlpha = s.a;
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.globalAlpha = 1;
-
-    // Moon
-    ctx.fillStyle = "#f5f3ce";
-    ctx.beginPath();
-    ctx.arc(700, 40, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Moon shadow (crescent effect)
-    ctx.fillStyle = "#0b1020";
-    ctx.beginPath();
-    ctx.arc(706, 36, 18, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   // Clouds
-  ctx.fillStyle = night ? "#444" : "#fff";
+  ctx.fillStyle = night ? "#555" : "#fff";
   clouds.forEach(c => {
     ctx.beginPath();
     ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
@@ -217,7 +183,7 @@ function draw() {
   ctx.fillStyle = night ? "#aaa" : "#333";
   ctx.fillRect(0, 160, 800, 5);
 
-  // Dino
+  // Dino (PNG)
   ctx.drawImage(dinoImg, dino.x, dino.y - 10, dino.w, dino.h);
 
   // Obstacles
