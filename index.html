@@ -2,10 +2,12 @@
 <html>
 <head>
   <title>Dino Voice Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       margin: 0;
       background: #f7f7f7;
+      touch-action: manipulation;
     }
     canvas {
       display: block;
@@ -13,17 +15,24 @@
       background: white;
       border: 2px solid black;
     }
+    .hint {
+      text-align: center;
+      font-family: Arial;
+      font-size: 14px;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
 
 <canvas id="game" width="800" height="200"></canvas>
+<div class="hint">Tap screen or press SPACE to jump</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// Dino variables
+// Dino
 let dinoY = 140;
 let velocity = 0;
 let gravity = 0.8;
@@ -42,96 +51,4 @@ const deathVoice = new Audio("voices/death1.mp3");
 jumpVoice.volume = 1;
 deathVoice.volume = 1;
 
-// 🔓 Unlock audio (IMPORTANT for Chrome)
-let audioUnlocked = false;
-
-function unlockAudio() {
-  if (!audioUnlocked) {
-    jumpVoice.play().then(() => {
-      jumpVoice.pause();
-      jumpVoice.currentTime = 0;
-    }).catch(() => {});
-    deathVoice.play().then(() => {
-      deathVoice.pause();
-      deathVoice.currentTime = 0;
-    }).catch(() => {});
-    audioUnlocked = true;
-  }
-}
-
-// Play jump sound
-function playJumpVoice() {
-  jumpVoice.currentTime = 0;
-  jumpVoice.play();
-}
-
-// Controls
-document.addEventListener("keydown", (e) => {
-  unlockAudio();
-
-  if (e.code === "Space" && !jumping && !gameOver) {
-    velocity = -12;
-    jumping = true;
-    playJumpVoice();
-  }
-
-  if (gameOver && e.code === "KeyR") {
-    location.reload();
-  }
-});
-
-// Update game logic
-function update() {
-  if (gameOver) return;
-
-  velocity += gravity;
-  dinoY += velocity;
-
-  if (dinoY >= 140) {
-    dinoY = 140;
-    velocity = 0;
-    jumping = false;
-  }
-
-  cactusX -= 5;
-  if (cactusX < -20) cactusX = 800;
-
-  // Collision detection
-  if (cactusX < 70 && cactusX > 40 && dinoY > 120) {
-    gameOver = true;
-    deathVoice.currentTime = 0;
-    deathVoice.play();
-  }
-}
-
-// Draw game
-function draw() {
-  ctx.clearRect(0, 0, 800, 200);
-
-  // Ground
-  ctx.fillRect(0, 160, 800, 5);
-
-  // Dino
-  ctx.fillRect(50, dinoY, 20, 20);
-
-  // Cactus
-  ctx.fillRect(cactusX, 140, 20, 20);
-
-  if (gameOver) {
-    ctx.font = "20px Arial";
-    ctx.fillText("GAME OVER - Press R", 260, 100);
-  }
-}
-
-// Game loop
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-loop();
-</script>
-
-</body>
-</html>
+// 🔓 Unlo
