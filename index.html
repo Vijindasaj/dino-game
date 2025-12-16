@@ -188,6 +188,22 @@ function draw() {
   ctx.fillStyle = night ? "#0b1020" : "#e8f4ff";
   ctx.fillRect(0, 0, 800, 200);
 
+  // ----- TITLE -----
+ctx.save();
+ctx.font = "bold 20px Arial";
+ctx.textAlign = "center";
+
+// shadow
+ctx.fillStyle = night ? "#000" : "#aaa";
+ctx.fillText("D I N O   J A Y A N", 402, 26);
+
+// main text
+ctx.fillStyle = night ? "#ffffff" : "#111";
+ctx.fillText("D I N O   J A Y A N", 400, 24);
+
+ctx.restore();
+
+
   if (night) {
     stars.forEach(s => {
       ctx.globalAlpha = s.a;
@@ -246,3 +262,4 @@ loop();
 
 </body>
 </html>
+
