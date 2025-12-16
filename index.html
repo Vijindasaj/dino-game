@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dino Voice Game+</title>
+  <title>Dino Game (No Sprites)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       margin: 0;
-      background: #eaeaea;
+      background: #888;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -14,49 +14,24 @@
       touch-action: manipulation;
     }
     canvas {
-      background: #fff;
       border: 2px solid #000;
-      outline: none;
+      background: #fff;
     }
   </style>
 </head>
 <body>
 
-<canvas id="game" width="800" height="200" tabindex="0"></canvas>
+<canvas id="game" width="800" height="200"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-canvas.focus();
-
-// ---------- GAME STATE ----------
-let dinoY = 140;
-let velocity = 0;
-let gravity = 0.8;
-let jumping = false;
-
-let cactusX = 800;
-let speed = 5;
-
-let groundX = 0;
-
-let score = 0;
-let highScore = localStorage.getItem("highScore") || 0;
-
-let gameOver = false;
-
-// ---------- CLOUDS ----------
-const clouds = [
-  { x: 200, y: 40 },
-  { x: 500, y: 30 },
-  { x: 750, y: 50 }
-];
 
 // ---------- AUDIO ----------
 const jumpVoice = new Audio("voices/jump1.mp3");
 const deathVoice = new Audio("voices/death1.mp3");
-
 let audioUnlocked = false;
+
 function unlockAudio() {
   if (!audioUnlocked) {
     jumpVoice.play().then(()=>jumpVoice.pause()).catch(()=>{});
@@ -65,122 +40,165 @@ function unlockAudio() {
   }
 }
 
+// ---------- GAME STATE ----------
+let dino = { x: 50, y: 140, w: 22, h: 22, vy: 0 };
+let gravity = 0.8;
+let jumping = false;
+
+let obstacles = [];
+let speed = 5;
+
+let clouds = [
+  { x: 100, y: 30 },
+  { x: 400, y: 50 },
+  { x: 700, y: 25 }
+];
+
+let score = 0;
+let highScore = localStorage.getItem("hs") || 0;
+
+let frame = 0;
+let night = false;
+let gameOver = false;
+
 // ---------- INPUT ----------
 function jump() {
   if (!jumping && !gameOver) {
-    velocity = -12;
+    dino.vy = -12;
     jumping = true;
     jumpVoice.currentTime = 0;
     jumpVoice.play();
   }
 }
 
-canvas.addEventListener("keydown", e => {
+document.addEventListener("keydown", e => {
   unlockAudio();
-  if (e.code === "Space") {
-    e.preventDefault();
-    jump();
-  }
+  if (e.code === "Space") jump();
   if (gameOver && e.code === "KeyR") location.reload();
 });
 
 canvas.addEventListener("click", () => {
   unlockAudio();
-  if (gameOver) location.reload();
-  else jump();
+  gameOver ? location.reload() : jump();
 });
 
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   unlockAudio();
-  if (gameOver) location.reload();
-  else jump();
+  gameOver ? location.reload() : jump();
 }, { passive: false });
+
+// ---------- OBSTACLES ----------
+function spawnObstacle() {
+  const r = Math.random();
+  let o = { x: 800 };
+
+  if (r < 0.4) { // small cactus
+    o.y = 140; o.w = 15; o.h = 20; o.type = "cactus";
+  } else if (r < 0.7) { // big cactus
+    o.y = 125; o.w = 20; o.h = 35; o.type = "cactus";
+  } else { // bird
+    o.y = 105; o.w = 22; o.h = 12; o.type = "bird";
+  }
+
+  obstacles.push(o);
+}
 
 // ---------- UPDATE ----------
 function update() {
   if (gameOver) return;
 
+  frame++;
+  score += 0.05;
+  speed += 0.0006;
+
+  if (Math.floor(score) % 300 === 0) night = !night;
+
   // Dino physics
-  velocity += gravity;
-  dinoY += velocity;
-  if (dinoY >= 140) {
-    dinoY = 140;
-    velocity = 0;
+  dino.vy += gravity;
+  dino.y += dino.vy;
+  if (dino.y >= 140) {
+    dino.y = 140;
+    dino.vy = 0;
     jumping = false;
   }
 
-  // Cactus
-  cactusX -= speed;
-  if (cactusX < -20) {
-    cactusX = 800;
-    score++;
-    speed += 0.2;
-  }
+  // Obstacles
+  if (frame % 110 === 0) spawnObstacle();
+  obstacles.forEach(o => o.x -= speed);
+  obstacles = obstacles.filter(o => o.x > -50);
 
   // Collision
-  if (cactusX < 70 && cactusX > 40 && dinoY > 120) {
-    gameOver = true;
-    deathVoice.play();
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem("highScore", highScore);
+  obstacles.forEach(o => {
+    if (
+      dino.x < o.x + o.w &&
+      dino.x + dino.w > o.x &&
+      dino.y < o.y + o.h &&
+      dino.y + dino.h > o.y
+    ) {
+      gameOver = true;
+      deathVoice.play();
+      if (score > highScore) {
+        highScore = Math.floor(score);
+        localStorage.setItem("hs", highScore);
+      }
     }
-  }
+  });
 
-  // Ground scroll
-  groundX -= speed;
-  if (groundX <= -800) groundX = 0;
-
-  // Clouds move slower (parallax)
+  // Clouds
   clouds.forEach(c => {
-    c.x -= speed * 0.3;
+    c.x -= speed * 0.2;
     if (c.x < -60) c.x = 860;
   });
 }
 
 // ---------- DRAW ----------
 function draw() {
-  ctx.clearRect(0, 0, 800, 200);
-
   // Sky
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = night ? "#1c1c2b" : "#e8f4ff";
   ctx.fillRect(0, 0, 800, 200);
 
   // Clouds
-  ctx.fillStyle = "#ccc";
+  ctx.fillStyle = night ? "#555" : "#fff";
   clouds.forEach(c => {
     ctx.beginPath();
-    ctx.arc(c.x, c.y, 15, 0, Math.PI * 2);
-    ctx.arc(c.x + 20, c.y + 5, 15, 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+    ctx.arc(c.x + 12, c.y + 5, 12, 0, Math.PI * 2);
+    ctx.arc(c.x + 25, c.y, 10, 0, Math.PI * 2);
     ctx.fill();
   });
 
   // Ground
+  ctx.fillStyle = night ? "#aaa" : "#333";
+  ctx.fillRect(0, 160, 800, 5);
+
+  // Dino
   ctx.fillStyle = "#444";
-  ctx.fillRect(groundX, 160, 800, 5);
-  ctx.fillRect(groundX + 800, 160, 800, 5);
+  ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+  ctx.fillRect(dino.x + 10, dino.y - 8, 10, 8); // head
 
-  // Dino (textured block style)
-  ctx.fillStyle = "#000";
-  ctx.fillRect(50, dinoY, 22, 22);
-  ctx.fillRect(45, dinoY + 5, 5, 10); // tail
-
-  // Cactus
-  ctx.fillRect(cactusX, 140, 20, 20);
-  ctx.fillRect(cactusX + 6, 130, 6, 10);
+  // Obstacles
+  obstacles.forEach(o => {
+    if (o.type === "cactus") {
+      ctx.fillStyle = "#2e7d32";
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+    }
+  });
 
   // Score
+  ctx.fillStyle = night ? "#fff" : "#000";
   ctx.font = "14px Arial";
-  ctx.fillText("Score: " + score, 650, 20);
+  ctx.fillText("Score: " + Math.floor(score), 650, 20);
   ctx.fillText("High: " + highScore, 650, 40);
 
-  // Game over
   if (gameOver) {
     ctx.font = "20px Arial";
-    ctx.fillText("GAME OVER", 330, 90);
+    ctx.fillText("GAME OVER", 320, 95);
     ctx.font = "14px Arial";
-    ctx.fillText("Tap / Click / R to Restart", 300, 115);
+    ctx.fillText("Tap / Space / R to Restart", 285, 120);
   }
 }
 
