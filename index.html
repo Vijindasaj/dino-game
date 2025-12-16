@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>DINO JAYAN</title>
+  <title>Dino Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -31,9 +31,14 @@ canvas.focus();
 // ---------- LOAD DINO IMAGE ----------
 let dinoLoaded = false;
 const dinoImg = new Image();
-dinoImg.onload = () => dinoLoaded = true;
-dinoImg.onerror = () => console.warn("dino.png not found");
-dinoImg.src = "./dino.png";
+dinoImg.onload = () => {
+  dinoLoaded = true;
+  console.log("dino.png loaded");
+};
+dinoImg.onerror = () => {
+  console.warn("dino.png NOT FOUND — check filename & folder");
+};
+dinoImg.src = "./dino.png"; // IMPORTANT
 
 // ---------- AUDIO ----------
 const jumpVoice = new Audio("voices/jump1.mp3");
@@ -49,11 +54,7 @@ function unlockAudio() {
 }
 
 // ---------- GAME STATE ----------
-let dino, obstacles, speed, score, frame, gameOver;
-let highScore = localStorage.getItem("hs") || 0;
-let gravity = 0.8;
-let jumping = false;
-
+let dino, obstacles, speed, score, highScore, frame, gameOver;
 let night = false;
 let cycleTimer = 0;
 const CYCLE_DURATION = 900;
@@ -66,15 +67,20 @@ function resetGame() {
   frame = 0;
   gameOver = false;
 }
+
+highScore = localStorage.getItem("hs") || 0;
 resetGame();
 
-// ---------- DECOR ----------
+let gravity = 0.8;
+let jumping = false;
+
 let clouds = [
-  { x: 100, y: 35 },
-  { x: 400, y: 55 },
-  { x: 700, y: 30 }
+  { x: 100, y: 30 },
+  { x: 400, y: 50 },
+  { x: 700, y: 25 }
 ];
 
+// ⭐ Stars
 let stars = Array.from({ length: 40 }, () => ({
   x: Math.random() * 800,
   y: Math.random() * 80,
@@ -94,7 +100,11 @@ function jump() {
 
 function handleAction() {
   unlockAudio();
-  gameOver ? resetGame() : jump();
+  if (gameOver) {
+    resetGame();
+  } else {
+    jump();
+  }
 }
 
 document.addEventListener("keydown", e => {
@@ -154,4 +164,85 @@ function update() {
       dino.y + dino.h > o.y
     ) {
       gameOver = true;
-      deathVoi
+      deathVoice.play();
+      if (score > highScore) {
+        highScore = Math.floor(score);
+        localStorage.setItem("hs", highScore);
+      }
+    }
+  });
+
+  clouds.forEach(c => {
+    c.x -= speed * 0.2;
+    if (c.x < -60) c.x = 860;
+  });
+
+  stars.forEach(s => {
+    s.a += (Math.random() - 0.5) * 0.05;
+    s.a = Math.max(0.2, Math.min(1, s.a));
+  });
+}
+
+// ---------- DRAW ----------
+function draw() {
+  ctx.fillStyle = night ? "#0b1020" : "#e8f4ff";
+  ctx.fillRect(0, 0, 800, 200);
+
+  if (night) {
+    stars.forEach(s => {
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "#f5f3ce";
+    ctx.beginPath();
+    ctx.arc(700, 40, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#0b1020";
+    ctx.beginPath();
+    ctx.arc(706, 36, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = night ? "#aaa" : "#333";
+  ctx.fillRect(0, 160, 800, 5);
+
+  if (dinoLoaded) {
+    ctx.drawImage(dinoImg, dino.x, dino.y - 10, dino.w, dino.h);
+  } else {
+    ctx.fillStyle = "#444";
+    ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+  }
+
+  ctx.fillStyle = "#2e7d32";
+  obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+
+  ctx.fillStyle = night ? "#fff" : "#000";
+  ctx.font = "14px Arial";
+  ctx.fillText("Score: " + Math.floor(score), 650, 20);
+  ctx.fillText("High: " + highScore, 650, 40);
+
+  if (gameOver) {
+    ctx.font = "20px Arial";
+    ctx.fillText("GAME OVER", 320, 95);
+    ctx.font = "14px Arial";
+    ctx.fillText("Space / Tap to Restart", 300, 120);
+  }
+}
+
+// ---------- LOOP ----------
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
