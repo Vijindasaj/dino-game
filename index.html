@@ -1,78 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dino Voice Game</title>
+  <title>Dino Voice Game+</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       margin: 0;
-      background: #f7f7f7;
+      background: #eaeaea;
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
       touch-action: manipulation;
     }
     canvas {
-      background: white;
-      border: 2px solid black;
+      background: #fff;
+      border: 2px solid #000;
       outline: none;
-    }
-    .hint {
-      font-family: Arial;
-      font-size: 14px;
-      margin-top: 8px;
     }
   </style>
 </head>
 <body>
 
 <canvas id="game" width="800" height="200" tabindex="0"></canvas>
-<div class="hint">Tap / Click canvas or press SPACE to jump</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-
-// 🔑 focus canvas so keyboard works
 canvas.focus();
 
-// Dino
+// ---------- GAME STATE ----------
 let dinoY = 140;
 let velocity = 0;
 let gravity = 0.8;
 let jumping = false;
 
-// Cactus
 let cactusX = 800;
+let speed = 5;
 
-// Game state
+let groundX = 0;
+
+let score = 0;
+let highScore = localStorage.getItem("highScore") || 0;
+
 let gameOver = false;
 
-// 🔊 Audio
+// ---------- CLOUDS ----------
+const clouds = [
+  { x: 200, y: 40 },
+  { x: 500, y: 30 },
+  { x: 750, y: 50 }
+];
+
+// ---------- AUDIO ----------
 const jumpVoice = new Audio("voices/jump1.mp3");
 const deathVoice = new Audio("voices/death1.mp3");
 
-jumpVoice.volume = 1;
-deathVoice.volume = 1;
-
-// 🔓 Unlock audio on first interaction
 let audioUnlocked = false;
 function unlockAudio() {
   if (!audioUnlocked) {
-    jumpVoice.play().then(() => {
-      jumpVoice.pause();
-      jumpVoice.currentTime = 0;
-    }).catch(()=>{});
-    deathVoice.play().then(() => {
-      deathVoice.pause();
-      deathVoice.currentTime = 0;
-    }).catch(()=>{});
+    jumpVoice.play().then(()=>jumpVoice.pause()).catch(()=>{});
+    deathVoice.play().then(()=>deathVoice.pause()).catch(()=>{});
     audioUnlocked = true;
   }
 }
 
+// ---------- INPUT ----------
 function jump() {
   if (!jumping && !gameOver) {
     velocity = -12;
@@ -82,8 +75,7 @@ function jump() {
   }
 }
 
-// ⌨️ Keyboard
-canvas.addEventListener("keydown", (e) => {
+canvas.addEventListener("keydown", e => {
   unlockAudio();
   if (e.code === "Space") {
     e.preventDefault();
@@ -92,59 +84,107 @@ canvas.addEventListener("keydown", (e) => {
   if (gameOver && e.code === "KeyR") location.reload();
 });
 
-// 🖱️ Click
 canvas.addEventListener("click", () => {
   unlockAudio();
   if (gameOver) location.reload();
   else jump();
 });
 
-// 📱 Touch
-canvas.addEventListener("touchstart", (e) => {
+canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   unlockAudio();
   if (gameOver) location.reload();
   else jump();
 }, { passive: false });
 
-// Update
+// ---------- UPDATE ----------
 function update() {
   if (gameOver) return;
 
+  // Dino physics
   velocity += gravity;
   dinoY += velocity;
-
   if (dinoY >= 140) {
     dinoY = 140;
     velocity = 0;
     jumping = false;
   }
 
-  cactusX -= 5;
-  if (cactusX < -20) cactusX = 800;
+  // Cactus
+  cactusX -= speed;
+  if (cactusX < -20) {
+    cactusX = 800;
+    score++;
+    speed += 0.2;
+  }
 
+  // Collision
   if (cactusX < 70 && cactusX > 40 && dinoY > 120) {
     gameOver = true;
-    deathVoice.currentTime = 0;
     deathVoice.play();
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("highScore", highScore);
+    }
   }
+
+  // Ground scroll
+  groundX -= speed;
+  if (groundX <= -800) groundX = 0;
+
+  // Clouds move slower (parallax)
+  clouds.forEach(c => {
+    c.x -= speed * 0.3;
+    if (c.x < -60) c.x = 860;
+  });
 }
 
-// Draw
+// ---------- DRAW ----------
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, 800, 200);
 
-  ctx.fillRect(0, 160, 800, 5);       // ground
-  ctx.fillRect(50, dinoY, 20, 20);    // dino
-  ctx.fillRect(cactusX, 140, 20, 20); // cactus
+  // Sky
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 800, 200);
 
+  // Clouds
+  ctx.fillStyle = "#ccc";
+  clouds.forEach(c => {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 15, 0, Math.PI * 2);
+    ctx.arc(c.x + 20, c.y + 5, 15, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Ground
+  ctx.fillStyle = "#444";
+  ctx.fillRect(groundX, 160, 800, 5);
+  ctx.fillRect(groundX + 800, 160, 800, 5);
+
+  // Dino (textured block style)
+  ctx.fillStyle = "#000";
+  ctx.fillRect(50, dinoY, 22, 22);
+  ctx.fillRect(45, dinoY + 5, 5, 10); // tail
+
+  // Cactus
+  ctx.fillRect(cactusX, 140, 20, 20);
+  ctx.fillRect(cactusX + 6, 130, 6, 10);
+
+  // Score
+  ctx.font = "14px Arial";
+  ctx.fillText("Score: " + score, 650, 20);
+  ctx.fillText("High: " + highScore, 650, 40);
+
+  // Game over
   if (gameOver) {
     ctx.font = "20px Arial";
-    ctx.fillText("GAME OVER - Tap / Click / R", 220, 100);
+    ctx.fillText("GAME OVER", 330, 90);
+    ctx.font = "14px Arial";
+    ctx.fillText("Tap / Click / R to Restart", 300, 115);
   }
 }
 
-// Loop
+// ---------- LOOP ----------
 function loop() {
   update();
   draw();
