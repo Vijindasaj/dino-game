@@ -7,30 +7,36 @@
     body {
       margin: 0;
       background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
       touch-action: manipulation;
     }
     canvas {
-      display: block;
-      margin: auto;
       background: white;
       border: 2px solid black;
+      outline: none;
     }
     .hint {
-      text-align: center;
       font-family: Arial;
       font-size: 14px;
-      margin-top: 6px;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
 
-<canvas id="game" width="800" height="200"></canvas>
-<div class="hint">Tap screen or press SPACE to jump</div>
+<canvas id="game" width="800" height="200" tabindex="0"></canvas>
+<div class="hint">Tap / Click canvas or press SPACE to jump</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+
+// 🔑 focus canvas so keyboard works
+canvas.focus();
 
 // Dino
 let dinoY = 140;
@@ -51,4 +57,102 @@ const deathVoice = new Audio("voices/death1.mp3");
 jumpVoice.volume = 1;
 deathVoice.volume = 1;
 
-// 🔓 Unlo
+// 🔓 Unlock audio on first interaction
+let audioUnlocked = false;
+function unlockAudio() {
+  if (!audioUnlocked) {
+    jumpVoice.play().then(() => {
+      jumpVoice.pause();
+      jumpVoice.currentTime = 0;
+    }).catch(()=>{});
+    deathVoice.play().then(() => {
+      deathVoice.pause();
+      deathVoice.currentTime = 0;
+    }).catch(()=>{});
+    audioUnlocked = true;
+  }
+}
+
+function jump() {
+  if (!jumping && !gameOver) {
+    velocity = -12;
+    jumping = true;
+    jumpVoice.currentTime = 0;
+    jumpVoice.play();
+  }
+}
+
+// ⌨️ Keyboard
+canvas.addEventListener("keydown", (e) => {
+  unlockAudio();
+  if (e.code === "Space") {
+    e.preventDefault();
+    jump();
+  }
+  if (gameOver && e.code === "KeyR") location.reload();
+});
+
+// 🖱️ Click
+canvas.addEventListener("click", () => {
+  unlockAudio();
+  if (gameOver) location.reload();
+  else jump();
+});
+
+// 📱 Touch
+canvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  unlockAudio();
+  if (gameOver) location.reload();
+  else jump();
+}, { passive: false });
+
+// Update
+function update() {
+  if (gameOver) return;
+
+  velocity += gravity;
+  dinoY += velocity;
+
+  if (dinoY >= 140) {
+    dinoY = 140;
+    velocity = 0;
+    jumping = false;
+  }
+
+  cactusX -= 5;
+  if (cactusX < -20) cactusX = 800;
+
+  if (cactusX < 70 && cactusX > 40 && dinoY > 120) {
+    gameOver = true;
+    deathVoice.currentTime = 0;
+    deathVoice.play();
+  }
+}
+
+// Draw
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillRect(0, 160, 800, 5);       // ground
+  ctx.fillRect(50, dinoY, 20, 20);    // dino
+  ctx.fillRect(cactusX, 140, 20, 20); // cactus
+
+  if (gameOver) {
+    ctx.font = "20px Arial";
+    ctx.fillText("GAME OVER - Tap / Click / R", 220, 100);
+  }
+}
+
+// Loop
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
